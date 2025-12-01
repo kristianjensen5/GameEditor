@@ -1,657 +1,955 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="da">
 <head>
-  <meta charset="UTF-8" />
-  <title>Trump Game Trigger Editor (Overlay Version)</title>
-
+  <meta charset="utf-8" />
+  <title>Trump-spil – Trigger & Objekt Editor</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
   <style>
-    * { box-sizing: border-box; }
-    html, body {
-      margin: 0; padding: 0; height: 100%;
-      font-family: system-ui, sans-serif;
-      background: #f5f5f7;
+    :root {
+      --bg: #050814;
+      --panel: #0c1022;
+      --panel-alt: #0f142b;
+      --border: #252b4a;
+      --accent: #ffce4a;
+      --accent-soft: rgba(255,206,74,0.15);
+      --accent-2: #4ad5ff;
+      --text: #f5f5ff;
+      --muted: #a3a7c6;
+      --danger: #ff6b81;
+      --radius-xl: 18px;
+      --radius-lg: 12px;
+      --radius-sm: 8px;
     }
+
+    * { box-sizing: border-box; }
+
+    html, body {
+      margin: 0;
+      padding: 0;
+      height: 100%;
+      background: radial-gradient(circle at top, #1a233e 0, #050814 52%, #020308 100%);
+      color: var(--text);
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+
     body {
-      display: flex; flex-direction: column;
+      display: flex;
+      align-items: stretch;
+      justify-content: center;
+      padding: 10px;
     }
 
     #app {
-      flex: 1;
       display: grid;
-      grid-template-columns: 260px 1fr 320px;
-      grid-template-rows: auto 1fr;
-      grid-template-areas:
-        "sidebar toolbar inspector"
-        "sidebar main inspector";
+      grid-template-columns: 260px minmax(0, 1.3fr) 320px;
+      grid-template-rows: minmax(0, 1fr);
+      gap: 10px;
+      width: 100%;
+      max-width: 1600px;
       height: 100%;
     }
 
-    .sidebar {
-      grid-area: sidebar;
-      border-right: 1px solid #ddd;
-      background: #fafafa;
-      padding: 10px;
-      overflow-y: auto;
-    }
-    .sidebar h2 { font-size: 14px; margin: 0 0 6px; }
-
-    .scene-item { margin-bottom: 4px; }
-    .scene-header {
-      font-size: 12px; font-weight: 600;
-      cursor: pointer; padding: 3px 4px;
-      border-radius: 4px;
-      display: flex; justify-content: space-between;
-    }
-    .scene-header:hover { background: #ececec; }
-
-    .trigger-list {
-      margin: 2px 0 6px 8px;
-      padding-left: 6px; border-left: 1px solid #ddd;
-    }
-    .trigger-item {
-      font-size: 12px; padding: 2px 4px;
-      border-radius: 4px; cursor: pointer;
-      display: flex; justify-content: space-between;
-    }
-    .trigger-item:hover { background: #ececec; }
-    .trigger-item.active {
-      background: #2563eb; color: white;
+    .column {
+      background: radial-gradient(circle at top left, #161b35 0, #050814 55%);
+      border-radius: var(--radius-xl);
+      border: 1px solid rgba(40, 54, 99, 0.9);
+      box-shadow:
+        0 0 0 1px rgba(255,255,255,0.02),
+        0 30px 80px rgba(0,0,0,0.65);
+      padding: 10px 12px;
+      display: flex;
+      flex-direction: column;
+      min-height: 0;
     }
 
-    .toolbar {
-      grid-area: toolbar;
-      display: flex; align-items: center;
-      gap: 8px; padding: 8px 10px;
-      border-bottom: 1px solid #ddd;
-      background: white;
+    .column h2 {
+      margin: 0 0 6px;
+      font-size: 15px;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      color: var(--muted);
     }
 
-    .main {
-      grid-area: main;
-      display: flex; flex-direction: column;
-      padding: 8px; gap: 8px;
-      overflow: hidden;
-    }
-    .preview-and-code {
-      display: grid; grid-template-columns: 1.2fr 1fr;
-      gap: 8px; height: 100%; min-height: 0;
+    .column h2 span {
+      color: var(--accent);
     }
 
-    .preview {
-      position: relative;
-      background: #fff;
-      border: 1px solid #ddd;
-      border-radius: 8px;
-      overflow: hidden;
-      display: flex; flex-direction: column;
+    .column p {
+      margin: 0 0 8px;
+      font-size: 13px;
+      color: var(--muted);
     }
-    .preview-header {
+
+    /* LEFT COLUMN (actions) */
+    .pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 4px 8px;
+      font-size: 11px;
+      border-radius: 999px;
+      background: rgba(10, 17, 41, 0.9);
+      border: 1px solid rgba(61, 75, 143, 0.8);
+      color: var(--muted);
+      margin-bottom: 6px;
+    }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
       padding: 6px 10px;
-      font-size: 12px; font-weight: 600;
-      background: #f8f8fb;
-    }
-
-    #gameFrame {
-      flex: 1;
-      border: none;
-      background: #222;
-      pointer-events: none;
-    }
-    #gameOverlay {
-      position: absolute;
-      top: 0; left: 0; right: 0; bottom: 0;
-      pointer-events: auto; /* overlay fanger klik */
-    }
-
-    .code-editor {
-      display: flex; flex-direction: column;
-      background: #0b1020;
-      border-radius: 8px;
-      border: 1px solid #222;
-    }
-    .code-header {
-      padding: 6px 10px; color: #ddd;
-      background: #111827;
-      font-size: 12px; font-weight: 600;
-    }
-    #codeText {
-      flex: 1; border: none; resize: none;
-      font-family: ui-monospace, monospace;
-      font-size: 12px; padding: 8px;
-      outline: none; background: #0b1020; color: #e6edf3;
-    }
-    .code-footer {
-      padding: 6px 8px;
-      border-top: 1px solid #222;
-      display: flex; justify-content: flex-end;
-      background: #111827;
-    }
-
-    .inspector {
-      grid-area: inspector;
-      border-left: 1px solid #ddd;
-      background: #fafafa; padding: 10px;
-      overflow-y: auto;
-    }
-    .inspector h2 { margin: 0 0 8px; font-size: 14px; }
-
-    .inspector .field-row { margin-bottom: 8px; }
-    .inspector input, .inspector select, .inspector textarea {
-      width: 100%; padding: 4px 6px;
-      border: 1px solid #ccc; border-radius: 4px;
+      border-radius: 999px;
+      border: 1px solid rgba(255, 255, 255, 0.06);
+      background: linear-gradient(135deg, #1b2446, #151a36);
+      color: var(--text);
       font-size: 12px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: transform 120ms ease, box-shadow 120ms ease, border-color 120ms ease, background 120ms ease;
+      white-space: nowrap;
+    }
+
+    .btn span.icon {
+      font-size: 14px;
+    }
+
+    .btn:hover {
+      border-color: rgba(255, 206, 74, 0.7);
+      box-shadow: 0 0 0 1px rgba(255, 206, 74, 0.35);
+      transform: translateY(-1px);
+    }
+
+    .btn-primary {
+      background: linear-gradient(135deg, #ffce4a, #ff9f1a);
+      color: #221408;
+      border-color: rgba(255, 206, 74, 0.9);
+      box-shadow: 0 0 0 1px rgba(0,0,0,0.8), 0 16px 40px rgba(255, 191, 0, 0.35);
+    }
+
+    .btn-primary:hover {
+      background: linear-gradient(135deg, #ffd972, #ffb743);
+    }
+
+    .btn-ghost {
+      background: transparent;
+      border-color: rgba(113, 128, 188, 0.5);
+    }
+
+    .btn-ghost:hover {
+      border-color: rgba(255, 255, 255, 0.5);
+      background: rgba(83, 99, 169, 0.2);
+    }
+
+    .btn-danger {
+      background: linear-gradient(135deg, #ff6b81, #ff3b61);
+      border-color: rgba(255, 107, 129, 0.9);
+      color: #2b050f;
+    }
+
+    .btn-row {
+      display: flex;
+      gap: 6px;
+      flex-wrap: wrap;
+      margin: 6px 0 10px;
+    }
+
+    .section {
+      padding: 8px 9px;
+      border-radius: var(--radius-lg);
+      background: linear-gradient(145deg, rgba(11,18,45,0.95), rgba(6,9,26,0.95));
+      border: 1px solid rgba(47, 61, 124, 0.9);
+      margin-bottom: 8px;
+    }
+
+    .section + .section {
+      margin-top: 6px;
+    }
+
+    .section h3 {
+      margin: 0 0 6px;
+      font-size: 13px;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--muted);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .section h3 span {
+      font-size: 11px;
+      color: var(--accent-2);
+    }
+
+    .section small {
+      font-size: 11px;
+      color: var(--muted);
+    }
+
+    /* CENTER: GAME PREVIEW + LOG */
+    .center {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      min-height: 0;
+    }
+
+    .game-shell {
+      position: relative;
+      flex: 1;
+      min-height: 0;
+      border-radius: var(--radius-xl);
+      background: radial-gradient(circle at top, #101528 0, #040712 60%, #020308 100%);
+      border: 1px solid rgba(44, 59, 120, 0.9);
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .game-header {
+      padding: 6px 10px 6px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      border-bottom: 1px solid rgba(33, 46, 100, 0.9);
+      background: linear-gradient(to right, rgba(255, 206, 74, 0.08), rgba(4, 9, 28, 0.95));
+    }
+
+    .game-header-left {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 12px;
+      color: var(--muted);
+    }
+
+    .game-chip {
+      padding: 3px 8px;
+      border-radius: 999px;
+      background: rgba(4, 9, 28, 0.9);
+      border: 1px solid rgba(255, 255, 255, 0.05);
+      font-size: 11px;
+      color: var(--accent);
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .game-chip span {
+      font-size: 13px;
+    }
+
+    .game-frame-wrapper {
+      position: relative;
+      flex: 1;
+      min-height: 0;
+      padding: 8px;
+      display: flex;
+    }
+
+    .game-frame-inner {
+      position: relative;
+      border-radius: var(--radius-lg);
+      border: 1px solid rgba(33, 46, 100, 0.9);
+      overflow: hidden;
+      flex: 1;
+      background: radial-gradient(circle at top, #151c32 0, #03040b 70%);
+      box-shadow:
+        0 0 0 1px rgba(0,0,0,0.6),
+        0 18px 40px rgba(0,0,0,0.85);
+    }
+
+    iframe#gameFrame {
+      width: 100%;
+      height: 100%;
+      border: none;
+      display: block;
+      background: #000;
+      transform-origin: center center;
+    }
+
+    .game-footer {
+      padding: 5px 9px 7px;
+      border-top: 1px solid rgba(33, 46, 100, 0.9);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 11px;
+      color: var(--muted);
+      background: radial-gradient(circle at bottom, rgba(255, 206, 74, 0.09), rgba(5, 7, 20, 0.98));
+    }
+
+    .log {
+      height: 130px;
+      border-radius: var(--radius-lg);
+      background: radial-gradient(circle at top left, #091020 0, #040610 55%);
+      border: 1px solid rgba(29, 40, 89, 0.9);
+      padding: 6px 8px;
+      font-size: 11px;
+      color: var(--muted);
+      overflow: auto;
+      font-family: "SF Mono", ui-monospace, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+      white-space: pre-wrap;
+    }
+
+    .log .tag {
+      color: var(--accent-2);
+    }
+
+    /* RIGHT COLUMN: OBJECT LIST & DETAILS */
+    .object-list {
+      margin-top: 4px;
+      border-radius: var(--radius-lg);
+      background: linear-gradient(145deg, rgba(5, 9, 26, 0.96), rgba(9, 16, 37, 0.98));
+      border: 1px solid rgba(47, 61, 124, 0.9);
+      max-height: 260px;
+      overflow: auto;
+    }
+
+    .object-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 6px;
+      padding: 5px 7px;
+      font-size: 11px;
+      cursor: pointer;
+      border-bottom: 1px solid rgba(23, 30, 66, 0.9);
+      background: transparent;
+      transition: background 120ms ease, color 120ms ease;
+    }
+
+    .object-row:last-child {
+      border-bottom: none;
+    }
+
+    .object-row:hover {
+      background: rgba(255, 255, 255, 0.03);
+    }
+
+    .object-row.active {
+      background: var(--accent-soft);
+      color: var(--accent);
+    }
+
+    .object-row-main {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+
+    .object-label {
+      font-size: 11px;
+    }
+
+    .object-meta {
+      font-size: 10px;
+      color: var(--muted);
+    }
+
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      padding: 2px 7px;
+      border-radius: 999px;
+      border: 1px solid rgba(76, 91, 159, 0.9);
+      background: rgba(12, 18, 44, 0.95);
+      font-size: 10px;
+      color: var(--muted);
+      white-space: nowrap;
+    }
+
+    .badge span.icon {
+      font-size: 11px;
+    }
+
+    .form-grid {
+      display: grid;
+      grid-template-columns: 1.2fr 0.8fr;
+      gap: 6px;
+      margin-top: 4px;
+    }
+
+    label {
+      display: flex;
+      flex-direction: column;
+      font-size: 11px;
+      color: var(--muted);
+      gap: 2px;
+    }
+
+    input[type="text"],
+    input[type="number"],
+    select,
+    textarea {
+      border-radius: var(--radius-sm);
+      border: 1px solid rgba(61, 75, 143, 0.9);
+      background: radial-gradient(circle at top left, #050716 0, #050814 55%);
+      color: var(--text);
+      font-size: 11px;
+      padding: 4px 6px;
+      font-family: inherit;
+    }
+
+    textarea {
+      min-height: 60px;
+      resize: vertical;
+    }
+
+    input:focus,
+    select:focus,
+    textarea:focus {
+      outline: none;
+      border-color: var(--accent);
+      box-shadow: 0 0 0 1px rgba(255, 206, 74, 0.3);
+    }
+
+    .row {
+      display: flex;
+      gap: 6px;
+      align-items: center;
+    }
+
+    .row.stretch {
+      justify-content: space-between;
+    }
+
+    .json-preview {
+      margin-top: 6px;
+      border-radius: var(--radius-sm);
+      background: rgba(3, 6, 18, 0.95);
+      border: 1px dashed rgba(61, 75, 143, 0.8);
+      padding: 4px 6px;
+      font-size: 10px;
+      max-height: 90px;
+      overflow: auto;
+      font-family: "SF Mono", ui-monospace, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+      color: var(--muted);
+    }
+
+    @media (max-width: 1100px) {
+      #app {
+        grid-template-columns: 240px minmax(0, 1fr);
+        grid-template-rows: minmax(0, 1.2fr) minmax(0, 1fr);
+      }
+      .column.right {
+        grid-column: 1 / span 2;
+      }
+    }
+
+    @media (max-width: 860px) {
+      body {
+        padding: 6px;
+      }
+      #app {
+        grid-template-columns: minmax(0, 1fr);
+        grid-template-rows: auto minmax(0, 1.2fr) minmax(0, 1fr);
+      }
+      .column.left, .column.right, .center {
+        min-height: 0;
+      }
     }
   </style>
 </head>
-
 <body>
-<div id="app">
+  <div id="app">
+    <!-- LEFT: Actions / workflow -->
+    <div class="column left">
+      <h2><span>Trump-spil</span> – Editor</h2>
+      <p>
+        Workflow: Åbn spil → <strong>Scan objekter</strong> → vælg et objekt
+        i listen → justér værdier i højre side.
+      </p>
 
-  <!-- Sidebar -->
-  <div class="sidebar">
-    <h2>Scenes & triggers</h2>
-    <div id="sceneList"></div>
-
-    <button id="addTriggerBtn" style="margin-top:10px;width:100%;">+ New trigger in scene</button>
-  </div>
-
-  <!-- Toolbar -->
-  <div class="toolbar">
-    <label>Game URL:
-      <input id="gameUrl" type="text" placeholder="Trumpspillet.html" style="min-width:180px;">
-    </label>
-    <button id="loadGameBtn">Load game</button>
-    <button id="exportBtn">Export triggers.js</button>
-    <span id="status" style="margin-left:auto;font-size:12px;color:#666;"></span>
-  </div>
-
-  <!-- Main -->
-  <div class="main">
-    <div class="preview-and-code">
-
-      <!-- GAME PREVIEW WITH OVERLAY -->
-      <div class="preview">
-        <div class="preview-header">Game preview</div>
-
-        <iframe id="gameFrame" title="Game preview"></iframe>
-
-        <!-- Overlay canvas -->
-        <canvas id="gameOverlay"></canvas>
+      <div class="pill">
+        <span>🎯</span> Fokus: læsning af objekter (scanner).
       </div>
 
-      <!-- CODE EDITOR -->
-      <div class="code-editor">
-        <div class="code-header">onTrigger(ctx, api)</div>
-        <textarea id="codeText" spellcheck="false"></textarea>
-        <div class="code-footer">
-          <button id="applyCodeBtn">Apply code to trigger</button>
+      <div class="section">
+        <h3>Game preview <span>indlæses fra Trumpspillet.html</span></h3>
+        <small>
+          Hvis spillet ændres, kan du reloade forhåndsvisningen her.
+        </small>
+        <div class="btn-row">
+          <button id="btnReloadGame" class="btn btn-ghost" type="button">
+            <span class="icon">🔁</span> Reload spil
+          </button>
+          <button id="btnScanObjects" class="btn btn-primary" type="button">
+            <span class="icon">🛰</span> Scan objekter fra spillet
+          </button>
         </div>
+        <small>
+          Scanneren bruger <code>window.__EDITOR_GET_INTERNALS()</code> fra spillet
+          til at læse <code>GL</code>, <code>OV</code>, <code>KR</code>, <code>EP</code> osv.
+        </small>
+      </div>
+
+      <div class="section">
+        <h3>Triggers (senere)</h3>
+        <small>
+          I næste step kobler vi triggers på – både som liste og
+          script-view. Lige nu fokuserer vi på at få et stabilt objektoverblik.
+        </small>
+      </div>
+    </div>
+
+    <!-- CENTER: Game preview + log -->
+    <div class="column center">
+      <div class="game-shell">
+        <div class="game-header">
+          <div class="game-header-left">
+            <div class="game-chip">
+              <span>🕹</span>
+              <strong>Game preview</strong>
+            </div>
+            <span>Trumpspillet.html (i iframe)</span>
+          </div>
+          <div class="row">
+            <span style="font-size:11px;color:var(--muted);">Editor & game: samme origin → fuld adgang ✅</span>
+          </div>
+        </div>
+
+        <div class="game-frame-wrapper">
+          <div class="game-frame-inner">
+            <iframe id="gameFrame" src="Trumpspillet.html" title="Trumpspillet preview"></iframe>
+          </div>
+        </div>
+
+        <div class="game-footer">
+          <div>Tip: Du kan styre Trump direkte i preview-vinduet.</div>
+          <div>Scanner læser direkte fra spillets interne datastrukturer.</div>
+        </div>
+      </div>
+
+      <div class="log" id="log">
+        <span class="tag">[info]</span> Editor klar. Klik <strong>“Scan objekter fra spillet”</strong> i venstre panel for at hente data.  
+      </div>
+    </div>
+
+    <!-- RIGHT: Object list + details -->
+    <div class="column right">
+      <h2><span>Objekter</span> fra scener</h2>
+      <p>
+        Listen nedenfor kommer fra en fuldautomatisk scan af
+        <code>GL</code>, <code>OV</code>, <code>KR</code> og <code>EP</code>.
+      </p>
+
+      <div class="section">
+        <h3>Objekt-liste <span id="objectCount">0 fundet</span></h3>
+        <div class="object-list" id="objectList">
+          <!-- rows fyldes via JS -->
+        </div>
+      </div>
+
+      <div class="section">
+        <h3>Valgt objekt</h3>
+        <small>
+          Her kan du se (og senere redigere) et konkret objekts data.
+        </small>
+
+        <form id="objectForm" autocomplete="off">
+          <div class="form-grid">
+            <label>
+              Label
+              <input type="text" id="fieldLabel" />
+            </label>
+            <label>
+              ID
+              <input type="text" id="fieldId" readonly />
+            </label>
+          </div>
+
+          <div class="form-grid" style="margin-top:4px;">
+            <label>
+              Scene
+              <select id="fieldScene">
+                <option value="">(ukendt)</option>
+                <option value="greenland">greenland</option>
+                <option value="oval">oval</option>
+                <option value="kremlin">kremlin</option>
+                <option value="epstein">epstein</option>
+                <option value="golf">golf</option>
+              </select>
+            </label>
+            <label>
+              Type
+              <input type="text" id="fieldType" />
+            </label>
+          </div>
+
+          <div class="form-grid" style="margin-top:4px;">
+            <label>
+              X
+              <input type="number" step="1" id="fieldX" />
+            </label>
+            <label>
+              Y
+              <input type="number" step="1" id="fieldY" />
+            </label>
+          </div>
+
+          <div class="form-grid" style="margin-top:4px;">
+            <label>
+              W
+              <input type="number" step="1" id="fieldW" />
+            </label>
+            <label>
+              H
+              <input type="number" step="1" id="fieldH" />
+            </label>
+          </div>
+
+          <div class="row stretch" style="margin-top:6px;">
+            <button type="button" class="btn btn-ghost" id="btnFocusLog">
+              <span class="icon">📋</span> Log JSON
+            </button>
+            <button type="button" class="btn btn-danger" id="btnNotImplemented">
+              <span class="icon">⚙</span> Update HTML (ikke aktiv endnu)
+            </button>
+          </div>
+
+          <div class="json-preview" id="jsonPreview">
+            {/* JSON for valgt objekt vises her */}
+          </div>
+        </form>
       </div>
     </div>
   </div>
 
-  <!-- Inspector -->
-  <div class="inspector">
-    <h2>Trigger inspector</h2>
-    <div id="inspectorContent">Vælg et trigger…</div>
-  </div>
+  <script>
+    const logEl = document.getElementById('log');
+    const gameFrame = document.getElementById('gameFrame');
+    const btnReloadGame = document.getElementById('btnReloadGame');
+    const btnScanObjects = document.getElementById('btnScanObjects');
+    const objectListEl = document.getElementById('objectList');
+    const objectCountEl = document.getElementById('objectCount');
+    const jsonPreviewEl = document.getElementById('jsonPreview');
 
-</div>
+    const form = {
+      id: document.getElementById('fieldId'),
+      label: document.getElementById('fieldLabel'),
+      scene: document.getElementById('fieldScene'),
+      type: document.getElementById('fieldType'),
+      x: document.getElementById('fieldX'),
+      y: document.getElementById('fieldY'),
+      w: document.getElementById('fieldW'),
+      h: document.getElementById('fieldH')
+    };
 
+    const btnFocusLog = document.getElementById('btnFocusLog');
+    const btnNotImplemented = document.getElementById('btnNotImplemented');
 
-<!-- ========================================================= -->
-<!-- ============= FULL JAVASCRIPT FOR EDITOR ================ -->
-<!-- ========================================================= -->
+    let scannedObjects = [];
+    let currentSelectionId = null;
 
-<script type="module">
-  import { triggers as importedTriggers } from "./triggers.js";
+    function log(message, tag = 'info') {
+      const now = new Date();
+      const time = now.toTimeString().slice(0, 8);
+      logEl.textContent += `[${time}] [${tag}] ${message}\n`;
+      logEl.scrollTop = logEl.scrollHeight;
+    }
 
-  /* ===========================================================
-     EDITOR STATE
-  ============================================================*/
-
-  const state = {
-    triggers: importedTriggers,
-    currentScene: null,
-    currentTriggerId: null,
-  };
-
-  const sceneListEl = document.getElementById("sceneList");
-  const inspectorEl = document.getElementById("inspectorContent");
-  const codeTextEl = document.getElementById("codeText");
-  const statusEl = document.getElementById("status");
-  const gameUrlEl = document.getElementById("gameUrl");
-  const gameFrameEl = document.getElementById("gameFrame");
-  const overlayCanvas = document.getElementById("gameOverlay");
-  const overlayCtx = overlayCanvas.getContext("2d");
-
-  let editorObjects = [];
-
-  function setStatus(msg) {
-    statusEl.textContent = msg;
-    if (msg)
-      setTimeout(() => {
-        if (statusEl.textContent === msg) statusEl.textContent = "";
-      }, 2500);
-  }
-
-  /* ===========================================================
-     RENDER SIDEBAR (Scenes and triggers)
-  ============================================================*/
-
-  function renderSceneList() {
-    const scenes = Object.keys(state.triggers);
-    sceneListEl.innerHTML = "";
-
-    scenes.forEach((sceneName) => {
-      const wrapper = document.createElement("div");
-      wrapper.className = "scene-item";
-
-      const header = document.createElement("div");
-      header.className = "scene-header";
-      header.textContent = sceneName;
-
-      const triggerList = document.createElement("div");
-      triggerList.className = "trigger-list";
-
-      const sceneTriggers = state.triggers[sceneName] || {};
-      const ids = Object.keys(sceneTriggers);
-
-      ids.forEach((id) => {
-        const trig = sceneTriggers[id];
-
-        const item = document.createElement("div");
-        item.className = "trigger-item";
-        if (
-          state.currentScene === sceneName &&
-          state.currentTriggerId === id
-        ) {
-          item.classList.add("active");
-        }
-
-        item.textContent = id + " (" + (trig.type || "") + ")";
-        item.addEventListener("click", () => {
-          state.currentScene = sceneName;
-          state.currentTriggerId = id;
-          renderSceneList();
-          renderInspector();
-          loadCode();
-        });
-
-        triggerList.appendChild(item);
+    function clearObjectDetails() {
+      currentSelectionId = null;
+      form.id.value = '';
+      form.label.value = '';
+      form.scene.value = '';
+      form.type.value = '';
+      form.x.value = '';
+      form.y.value = '';
+      form.w.value = '';
+      form.h.value = '';
+      jsonPreviewEl.textContent = '';
+      Array.from(objectListEl.querySelectorAll('.object-row')).forEach(row => {
+        row.classList.remove('active');
       });
-
-      wrapper.appendChild(header);
-      wrapper.appendChild(triggerList);
-      sceneListEl.appendChild(wrapper);
-    });
-  }
-
-  /* ===========================================================
-     INSPECTOR
-  ============================================================*/
-
-  function renderInspector() {
-    const scene = state.currentScene;
-    const id = state.currentTriggerId;
-
-    if (!scene || !id) {
-      inspectorEl.innerHTML = "Vælg en scene og et trigger…";
-      return;
     }
 
-    const trig = state.triggers[scene][id];
-    if (!trig) {
-      inspectorEl.innerHTML = "Trigger ikke fundet.";
-      return;
-    }
-
-    inspectorEl.innerHTML = "";
-
-    /* ID */
-    inspectorEl.innerHTML += `
-      <div class="field-row">
-        <label>Trigger ID</label>
-        <input value="${id}" readonly style="background:#eee;">
-      </div>
-    `;
-
-    /* Label */
-    inspectorEl.innerHTML += `
-      <div class="field-row">
-        <label>Label</label>
-        <input id="insp_label" value="${trig.label || ""}">
-      </div>
-    `;
-
-    /* Type */
-    inspectorEl.innerHTML += `
-      <div class="field-row">
-        <label>Type</label>
-        <select id="insp_type">
-          <option value="interact">interact</option>
-          <option value="proximity">proximity</option>
-          <option value="click">click</option>
-          <option value="event">event</option>
-        </select>
-      </div>
-    `;
-
-    /* Object */
-    inspectorEl.innerHTML += `
-      <div class="field-row">
-        <label>Object (type/id)</label>
-        <input id="insp_object" value="${trig.object || ""}">
-      </div>
-    `;
-
-    /* Conditions */
-    inspectorEl.innerHTML += `
-      <div class="field-row">
-        <label>Conditions (JSON)</label>
-        <textarea id="insp_cond" style="min-height:80px;">${
-          trig.conditions ? JSON.stringify(trig.conditions, null, 2) : ""
-        }</textarea>
-      </div>
-    `;
-
-    document.getElementById("insp_type").value = trig.type || "interact";
-
-    // Wiring
-    document.getElementById("insp_label").addEventListener("input", (ev) => {
-      trig.label = ev.target.value;
-      setStatus("Label opdateret");
-    });
-
-    document.getElementById("insp_type").addEventListener("change", (ev) => {
-      trig.type = ev.target.value;
-      renderSceneList();
-      setStatus("Type opdateret");
-    });
-
-    document.getElementById("insp_object").addEventListener("input", (ev) => {
-      trig.object = ev.target.value;
-      setStatus("Object opdateret");
-    });
-
-    document.getElementById("insp_cond").addEventListener("change", (ev) => {
-      const txt = ev.target.value.trim();
-      if (!txt) {
-        delete trig.conditions;
-        setStatus("Conditions fjernet");
+    function selectObjectById(id) {
+      const obj = scannedObjects.find(o => o.id === id);
+      if (!obj) {
+        clearObjectDetails();
         return;
       }
-      try {
-        trig.conditions = JSON.parse(txt);
-        setStatus("Conditions opdateret");
-      } catch (err) {
-        alert("Fejl i JSON: " + err.message);
+      currentSelectionId = id;
+      form.id.value = obj.id || '';
+      form.label.value = obj.label || '';
+      form.scene.value = obj.scene || '';
+      form.type.value = obj.type || '';
+      form.x.value = obj.x ?? '';
+      form.y.value = obj.y ?? '';
+      form.w.value = obj.w ?? '';
+      form.h.value = obj.h ?? '';
+      jsonPreviewEl.textContent = JSON.stringify(obj, null, 2);
+
+      Array.from(objectListEl.querySelectorAll('.object-row')).forEach(row => {
+        row.classList.toggle('active', row.dataset.id === id);
+      });
+    }
+
+    function renderObjectList(objects) {
+      scannedObjects = objects.slice();
+      objectListEl.innerHTML = '';
+      objectCountEl.textContent = `${objects.length} fundet`;
+
+      if (!objects.length) {
+        const empty = document.createElement('div');
+        empty.className = 'object-row';
+        empty.innerHTML = '<div class="object-row-main"><div class="object-label">Ingen objekter fundet</div><div class="object-meta">Tjek at spillet er loadet og at __EDITOR_GET_INTERNALS findes.</div></div>';
+        objectListEl.appendChild(empty);
+        return;
       }
-    });
-  }
 
-  /* ===========================================================
-     LOAD & APPLY CODE
-  ============================================================*/
+      const frag = document.createDocumentFragment();
 
-  function loadCode() {
-    const s = state.currentScene;
-    const id = state.currentTriggerId;
-    if (!s || !id) {
-      codeTextEl.value = "";
-      return;
+      for (const obj of objects) {
+        const row = document.createElement('button');
+        row.type = 'button';
+        row.className = 'object-row';
+        row.dataset.id = obj.id;
+
+        const main = document.createElement('div');
+        main.className = 'object-row-main';
+
+        const label = document.createElement('div');
+        label.className = 'object-label';
+        label.textContent = obj.label || obj.id || '(uden navn)';
+
+        const meta = document.createElement('div');
+        meta.className = 'object-meta';
+        const parts = [];
+        if (obj.scene) parts.push(`scene: ${obj.scene}`);
+        if (obj.type) parts.push(`type: ${obj.type}`);
+        if (typeof obj.x === 'number' && typeof obj.y === 'number') {
+          parts.push(`pos: ${obj.x}, ${obj.y}`);
+        }
+        meta.textContent = parts.join(' · ');
+
+        main.appendChild(label);
+        main.appendChild(meta);
+
+        const badge = document.createElement('div');
+        badge.className = 'badge';
+        badge.innerHTML = `<span class="icon">#</span>${obj.id || '–'}`;
+
+        row.appendChild(main);
+        row.appendChild(badge);
+
+        row.addEventListener('click', () => {
+          selectObjectById(obj.id);
+        });
+
+        frag.appendChild(row);
+      }
+
+      objectListEl.appendChild(frag);
     }
 
-    const trig = state.triggers[s][id];
-    if (typeof trig.onTrigger === "function") {
-      codeTextEl.value = trig.onTrigger.toString();
-    } else {
-      codeTextEl.value = `function onTrigger(ctx, api) {\n  // TODO\n}`;
-    }
-  }
-
-  function applyCode() {
-    const s = state.currentScene;
-    const id = state.currentTriggerId;
-    if (!s || !id) return alert("Vælg et trigger først.");
-
-    const trig = state.triggers[s][id];
-
-    const src = codeTextEl.value.trim();
-    try {
-      const fn = eval("(" + src + ")");
-      trig.onTrigger = fn;
-      setStatus("Trigger-kode opdateret");
-    } catch (err) {
-      alert("Fejl i kode: " + err.message);
-    }
-  }
-
-  /* ===========================================================
-     EXPORT triggers.js
-  ============================================================*/
-
-  function serializeValue(val, indent = 0) {
-    const ind = "  ".repeat(indent);
-
-    if (typeof val === "function") return val.toString();
-    if (typeof val === "number" || typeof val === "boolean")
-      return String(val);
-    if (typeof val === "string") return JSON.stringify(val);
-    if (val === null) return "null";
-
-    if (Array.isArray(val)) {
-      if (val.length === 0) return "[]";
-      let out = "[\n";
-      val.forEach((v, i) => {
-        out +=
-          "  ".repeat(indent + 1) +
-          serializeValue(v, indent + 1) +
-          (i < val.length - 1 ? "," : "") +
-          "\n";
+    // Hjælper til at lave et "enkelt" objekt
+    function pushSimple(out, obj, id, label, scene) {
+      if (!obj) return;
+      out.push({
+        id,
+        label,
+        scene,
+        type: obj.type || null,
+        x: typeof obj.x === 'number' ? obj.x : null,
+        y: typeof obj.y === 'number' ? obj.y : null,
+        w: typeof obj.w === 'number' ? obj.w : null,
+        h: typeof obj.h === 'number' ? obj.h : null
       });
-      out += ind + "]";
-      return out;
     }
 
-    if (typeof val === "object") {
-      const keys = Object.keys(val);
-      if (keys.length === 0) return "{}";
-      let out = "{\n";
-      keys.forEach((k, i) => {
-        out +=
-          "  ".repeat(indent + 1) +
-          k +
-          ": " +
-          serializeValue(val[k], indent + 1) +
-          (i < keys.length - 1 ? "," : "") +
-          "\n";
-      });
-      out += ind + "}";
-      return out;
-    }
+    function buildObjectsFromInternals(data) {
+      if (!data) return [];
+      const out = [];
 
-    return "null";
-  }
-
-  function exportTriggers() {
-    const src =
-      "// Generated by trigger-editor\n\nexport const triggers = " +
-      serializeValue(state.triggers, 0) +
-      ";\n";
-
-    const blob = new Blob([src], { type: "text/javascript" });
-    const url = URL.createObjectURL(blob);
-
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = "triggers.js";
-    a.click();
-
-    URL.revokeObjectURL(url);
-    setStatus("Downloaded triggers.js");
-  }
-
-  /* ===========================================================
-     NEW TRIGGER
-  ============================================================*/
-
-  function addTrigger() {
-    const scene = state.currentScene;
-    if (!scene) return alert("Vælg en scene først.");
-
-    const id = prompt("Nyt trigger-id:");
-    if (!id) return;
-
-    if (!state.triggers[scene]) state.triggers[scene] = {};
-    if (state.triggers[scene][id])
-      return alert("Trigger-id findes allerede.");
-
-    state.triggers[scene][id] = {
-      label: "New Trigger",
-      type: "interact",
-      object: "",
-      onTrigger(ctx, api) {
-        api.say("system", "New trigger!", 1000);
-      },
-    };
-
-    state.currentTriggerId = id;
-    renderSceneList();
-    renderInspector();
-    loadCode();
-  }
-
-  /* ===========================================================
-     GAME OVERLAY & CLICK HANDLING
-  ============================================================*/
-
-  function resizeOverlay() {
-    overlayCanvas.width = overlayCanvas.offsetWidth;
-    overlayCanvas.height = overlayCanvas.offsetHeight;
-  }
-
-  function drawOverlay() {
-    resizeOverlay();
-    overlayCtx.clearRect(
-      0,
-      0,
-      overlayCanvas.width,
-      overlayCanvas.height
-    );
-
-    editorObjects.forEach((obj) => {
-      overlayCtx.strokeStyle = "rgba(0,200,255,0.9)";
-      overlayCtx.lineWidth = 2;
-      overlayCtx.strokeRect(obj.x, obj.y, obj.w, obj.h);
-
-      overlayCtx.fillStyle = "rgba(0,200,255,0.25)";
-      overlayCtx.fillRect(obj.x, obj.y, obj.w, obj.h);
-
-      overlayCtx.fillStyle = "cyan";
-      overlayCtx.font = "12px sans-serif";
-      overlayCtx.fillText(obj.id, obj.x + 4, obj.y - 4);
-    });
-
-    requestAnimationFrame(drawOverlay);
-  }
-  drawOverlay();
-
-  overlayCanvas.addEventListener("click", (ev) => {
-    const rect = overlayCanvas.getBoundingClientRect();
-    const x = Math.round(ev.clientX - rect.left);
-    const y = Math.round(ev.clientY - rect.top);
-
-    if (gameFrameEl.contentWindow) {
-      gameFrameEl.contentWindow.postMessage(
-        { type: "EDITOR_CLICK", x, y },
-        "*"
-      );
-    }
-
-    const hit = editorObjects.find(
-      (o) => x >= o.x && x <= o.x + o.w && y >= o.y && y <= o.y + o.h
-    );
-
-    if (hit) selectTriggerForObject(hit.id);
-  });
-
-  function selectTriggerForObject(objectId) {
-    for (const scene of Object.keys(state.triggers)) {
-      for (const trigId of Object.keys(state.triggers[scene])) {
-        const trig = state.triggers[scene][trigId];
-        if (trig.object === objectId) {
-          state.currentScene = scene;
-          state.currentTriggerId = trigId;
-          renderSceneList();
-          renderInspector();
-          loadCode();
-          return;
+      // Grønland
+      if (data.GL) {
+        const GL = data.GL;
+        const scene = 'greenland';
+        pushSimple(out, GL.mine, 'gl_mine', 'Mine (Grønland)', scene);
+        pushSimple(out, GL.rig, 'gl_rig', 'Olieplatform', scene);
+        pushSimple(out, GL.heli, 'gl_heli', 'Helikopter', scene);
+        pushSimple(out, GL.mette, 'gl_mette', 'Mette Frederiksen', scene);
+        pushSimple(out, GL.bear, 'gl_bear', 'Isbjørn', scene);
+        pushSimple(out, GL.shop, 'gl_shop', 'Shop', scene);
+        if (Array.isArray(GL.glaciers)) {
+          GL.glaciers.forEach((g, i) => pushSimple(out, g, `gl_glacier_${i}`, `Isbjerg ${i + 1}`, scene));
+        }
+        if (Array.isArray(GL.items)) {
+          GL.items.forEach((it, i) => {
+            const id = it.id || `gl_item_${i}`;
+            const label = it.name ? `Pickup: ${it.name}` : `Pickup ${i + 1}`;
+            pushSimple(out, it, id, label, scene);
+          });
+        }
+        if (Array.isArray(GL.coins)) {
+          GL.coins.forEach((c, i) => pushSimple(out, c, `gl_coin_${i}`, `Guldbarre ${i + 1}`, scene));
         }
       }
+
+      // Oval Office
+      if (data.OV) {
+        const OV = data.OV;
+        const scene = 'oval';
+        pushSimple(out, OV.door, 'ov_door', 'Dør (Oval)', scene);
+        pushSimple(out, OV.heli, 'ov_heli', 'Helikopter (Oval)', scene);
+        pushSimple(out, OV.aide, 'ov_aide', 'Aide', scene);
+        pushSimple(out, OV.yes, 'ov_yes', 'Ja-person', scene);
+        if (Array.isArray(OV.buttons)) {
+          OV.buttons.forEach((b, i) => pushSimple(out, b, `ov_button_${i}`, `Knap ${i + 1}`, scene));
+        }
+        if (Array.isArray(OV.coins)) {
+          OV.coins.forEach((c, i) => pushSimple(out, c, `ov_coin_${i}`, `Coin ${i + 1}`, scene));
+        }
+        if (Array.isArray(OV.shelfLoot)) {
+          OV.shelfLoot.forEach((s, i) => pushSimple(out, s, `ov_shelf_${i}`, `Statue ${i + 1}`, scene));
+        }
+      }
+
+      // Kremlin
+      if (data.KR) {
+        const KR = data.KR;
+        const scene = 'kremlin';
+        pushSimple(out, KR.door, 'kr_door', 'Dør (Kremlin)', scene);
+        pushSimple(out, KR.heli, 'kr_heli', 'Helikopter (Kremlin)', scene);
+        pushSimple(out, KR.putin, 'kr_putin', 'Putin', scene);
+        if (KR.camera) pushSimple(out, KR.camera, 'kr_camera', 'Overvågningskamera', scene);
+        if (Array.isArray(KR.statues)) {
+          KR.statues.forEach((s, i) => pushSimple(out, s, `kr_statue_${i}`, `Statue ${i + 1}`, scene));
+        }
+        if (Array.isArray(KR.coins)) {
+          KR.coins.forEach((c, i) => pushSimple(out, c, `kr_coin_${i}`, `Coin ${i + 1}`, scene));
+        }
+      }
+
+      // Epstein
+      if (data.EP) {
+        const EP = data.EP;
+        const scene = 'epstein';
+        pushSimple(out, EP.door, 'ep_door', 'Dør (Epstein)', scene);
+        pushSimple(out, EP.desk, 'ep_desk', 'Skrivebord (Epstein)', scene);
+        pushSimple(out, EP.machine, 'ep_machine', 'Maskine', scene);
+        if (EP.finalArtRect) pushSimple(out, EP.finalArtRect, 'ep_art', 'Slut-art område', scene);
+      }
+
+      // Golf – vi tager kun nogle få nøgleting her
+      if (data.GOLF && data.GOLF.hole) {
+        const GOLF = data.GOLF;
+        const scene = 'golf';
+        if (GOLF.hole.teeRect) {
+          pushSimple(out, GOLF.hole.teeRect, 'golf_tee', 'Tee-område', scene);
+        }
+        if (GOLF.hole.cup) {
+          pushSimple(out, GOLF.hole.cup, 'golf_cup', 'Cup', scene);
+        }
+      }
+
+      return out;
     }
-  }
 
-  /* ===========================================================
-     COMMUNICATION: EDITOR ↔ GAME
-  ============================================================*/
+    function scanObjects() {
+      try {
+        const win = gameFrame.contentWindow;
+        if (!win) {
+          log('Ingen adgang til gameFrame.contentWindow', 'error');
+          return;
+        }
+        if (typeof win.__EDITOR_GET_INTERNALS !== 'function') {
+          log('window.__EDITOR_GET_INTERNALS findes ikke i spillet. Har du indsat patchen i Trumpspillet.html?', 'error');
+          renderObjectList([]);
+          return;
+        }
 
-  window.addEventListener("message", (event) => {
-    if (!event.data) return;
+        const internals = win.__EDITOR_GET_INTERNALS();
+        if (!internals) {
+          log('__EDITOR_GET_INTERNALS returnerede null/undefined', 'error');
+          renderObjectList([]);
+          return;
+        }
 
-    if (event.data.type === "EDITOR_OBJECTS") {
-      editorObjects = event.data.objects || [];
+        const objects = buildObjectsFromInternals(internals);
+        renderObjectList(objects);
+        clearObjectDetails();
+
+        log(`Scan gennemført. Fandt ${objects.length} objekter på tværs af scener.`);
+      } catch (err) {
+        console.error(err);
+        log('Fejl under scanning: ' + (err && err.message ? err.message : String(err)), 'error');
+        renderObjectList([]);
+      }
     }
-  });
 
-  function loadGame() {
-    const url = gameUrlEl.value.trim();
-    if (!url) return alert("Skriv en filsti eller URL til spillet.");
+    btnReloadGame.addEventListener('click', () => {
+      if (gameFrame) {
+        const prev = gameFrame.src;
+        gameFrame.src = '';
+        setTimeout(() => {
+          gameFrame.src = prev;
+          log('Game reloadet fra Trumpspillet.html');
+        }, 30);
+      }
+    });
 
-    gameFrameEl.src = url;
+    btnScanObjects.addEventListener('click', () => {
+      log('Starter fuldautomatisk scan af objekter…');
+      scanObjects();
+    });
 
-    // Når spillet loader, bed om objektliste
-    gameFrameEl.onload = () => {
-      gameFrameEl.contentWindow.postMessage(
-        { type: "EDITOR_GET_OBJECTS" },
-        "*"
-      );
-    };
-  }
+    btnFocusLog.addEventListener('click', () => {
+      if (currentSelectionId) {
+        const obj = scannedObjects.find(o => o.id === currentSelectionId);
+        if (obj) {
+          log('Valgt objekt:\n' + JSON.stringify(obj, null, 2), 'debug');
+        } else {
+          log('Intet aktivt objekt at logge.', 'debug');
+        }
+      } else {
+        log('Intet aktivt objekt at logge.', 'debug');
+      }
+      logEl.scrollIntoView({ behavior: 'smooth', block: 'end' });
+    });
 
-  /* ===========================================================
-     HOOK BUTTONS
-  ============================================================*/
+    btnNotImplemented.addEventListener('click', () => {
+      log('“Update HTML”-flow er ikke implementeret endnu – næste step bliver at generere patch/ny HTML ud fra de redigerede værdier.', 'info');
+      alert('Update tilbage til HTML er ikke slået til endnu.\n\nLige nu er denne editor en “reader + scanner”, så vi kan teste, at vi forstår spillets datastruktur korrekt.');
+    });
 
-  document
-    .getElementById("addTriggerBtn")
-    .addEventListener("click", addTrigger);
-  document
-    .getElementById("loadGameBtn")
-    .addEventListener("click", loadGame);
-  document
-    .getElementById("exportBtn")
-    .addEventListener("click", exportTriggers);
-  document
-    .getElementById("applyCodeBtn")
-    .addEventListener("click", applyCode);
+    form.label.addEventListener('input', () => {
+      if (!currentSelectionId) return;
+      const obj = scannedObjects.find(o => o.id === currentSelectionId);
+      if (!obj) return;
+      obj.label = form.label.value || obj.id;
+      jsonPreviewEl.textContent = JSON.stringify(obj, null, 2);
 
-  /* ===========================================================
-     INITIAL SELECTION
-  ============================================================*/
+      const row = objectListEl.querySelector(`.object-row[data-id="${obj.id}"] .object-label`);
+      if (row) row.textContent = obj.label;
+    });
 
-  const scenes = Object.keys(state.triggers);
-  if (scenes.length > 0) {
-    state.currentScene = scenes[0];
-    const ids = Object.keys(state.triggers[scenes[0]]);
-    if (ids.length > 0) state.currentTriggerId = ids[0];
-  }
+    ['scene','type','x','y','w','h'].forEach(key => {
+      const input = form[key];
+      if (!input) return;
+      input.addEventListener('input', () => {
+        if (!currentSelectionId) return;
+        const obj = scannedObjects.find(o => o.id === currentSelectionId);
+        if (!obj) return;
+        if (['x','y','w','h'].includes(key)) {
+          const v = input.value === '' ? null : Number(input.value);
+          obj[key] = Number.isFinite(v) ? v : null;
+        } else {
+          obj[key] = input.value || null;
+        }
+        jsonPreviewEl.textContent = JSON.stringify(obj, null, 2);
+      });
+    });
 
-  renderSceneList();
-  renderInspector();
-  loadCode();
-
-</script>
-
+    window.addEventListener('load', () => {
+      log('Trigger-editoren er indlæst. Når spillet er klar, kan du scanne objekter.');
+    });
+  </script>
 </body>
 </html>
