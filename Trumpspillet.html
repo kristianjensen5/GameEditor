@@ -723,6 +723,27 @@
     } catch(e){ console.warn('previewBirthdayArt failed', e); return false; }
   }
 
+  // ----- Editor bridge: eksponer interne scene-objekter (read-only) -----
+  // Bruges kun af trigger-editoren – spillet selv er ligeglad.
+  window.__EDITOR_GET_INTERNALS = function(){
+    try {
+      return {
+        scene,          // aktuel scene: 'intro' | 'greenland' | 'oval' | 'kremlin' | 'epstein' | 'golf'
+        world,          // world.floor m.m.
+        CFG,            // scale, debug osv.
+        GS,             // global game state (cleared-områder, over-mode osv.)
+        GL, OV, KR, EP, // scenes
+        GOLF,           // golf-mini-spillet
+        GAME_CONSTANTS,
+        VIRTUAL_W: (typeof VIRTUAL_W !== 'undefined' ? VIRTUAL_W : null),
+        VIRTUAL_H: (typeof VIRTUAL_H !== 'undefined' ? VIRTUAL_H : null)
+      };
+    } catch (e){
+      console.warn('__EDITOR_GET_INTERNALS failed', e);
+      return null;
+    }
+  };
+
   // Attempt to load birthday art JSON only if embedded inline
   try {
     const inline = document.getElementById('birthday-lottie-json');
